@@ -1,0 +1,2 @@
+add_executable(VectorList_test vector_list_test.cpp)
+target_link_libraries(VectorList_test PRIVATE VectorList)
