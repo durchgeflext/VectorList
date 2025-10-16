@@ -9,42 +9,239 @@ Created by FlyingLeek in 15/10/2025.
 
 #pragma once
 
+#include <cassert>
 #include <ranges>
 #include <vector>
 
 template <class T>
 class vector_list {
 
-    struct block {
+    public:
+    class iterator {
+        public:
+        constexpr iterator() noexcept : parent(nullptr), pos(0) {
+
+        }
+
+        constexpr iterator(vector_list* parent, size_t pos) noexcept : parent(parent), pos(pos) {
+
+        }
+
+
+        constexpr T& operator*() const {
+            return *parent->internal_at_ptr(pos);
+        }
+
+        constexpr T* operator->() const {
+           return parent->internal_at_ptr(pos);
+        }
+
+
+        constexpr iterator& operator++() noexcept {
+            ++pos;
+            return *this;
+        }
+
+        constexpr iterator operator++(int) noexcept {
+            iterator tmp = *this;
+            ++(*this);
+            return tmp;
+        }
+
+
+        constexpr iterator& operator--() noexcept {
+            --pos;
+            return *this;
+        }
+
+        constexpr iterator operator--(int) noexcept {
+            iterator tmp = *this;
+            --(*this);
+            return tmp;
+        }
+
+        constexpr iterator& operator+=(const ptrdiff_t n) noexcept {
+            pos += n;
+            return *this;
+        }
+
+        constexpr iterator& operator-=(const ptrdiff_t n) noexcept {
+            pos -= n;
+            return *this;
+        }
+
+        constexpr iterator operator+(const ptrdiff_t n) const noexcept {
+            return iterator(parent, pos + n);
+        }
+
+        constexpr iterator operator-(const ptrdiff_t n) const noexcept {
+            return iterator(parent, pos - n);
+        }
+
+        constexpr ptrdiff_t operator-(const iterator& other) const noexcept {
+            return static_cast<ptrdiff_t>(pos) - static_cast<ptrdiff_t>(other.pos);
+        }
+
+
+        constexpr T& operator[](ptrdiff_t n) const {
+            return *(*this + n);
+        }
+
+
+        constexpr bool operator==(const iterator& o) const noexcept {
+            return parent == o.parent && pos == o.pos;
+        }
+
+        constexpr std::strong_ordering operator<=>(const iterator& o) const noexcept {
+            return parent->internal_at_ptr(0) + pos <=> o.parent->internal_at_ptr(0) + o.pos;
+        }
+
         private:
-        std::vector<T> data;
-        size_t m_size = 0;
+        vector_list* parent;
+        size_t pos;
+    };
+
+    class const_iterator {
 
         public:
-        explicit block() = delete;
+        constexpr const_iterator() noexcept : parent(nullptr), pos(0) {
 
-        explicit block(size_t size) {
-            data.reserve(size);
+        }
+
+        constexpr const_iterator(const vector_list* parent, const size_t pos) noexcept : parent(parent), pos(pos) {
+
+        }
+
+        constexpr explicit const_iterator(const iterator& it) noexcept :parent(it.parent), pos(it.pos) {
+
+        }
+
+
+        constexpr const T& operator*() const {
+            return *(parent->internal_at_ptr(pos));
+        }
+
+        constexpr const T* operator->() const {
+            return parent->internal_at_ptr(pos);
+        }
+
+
+        constexpr const_iterator& operator++() noexcept {
+            ++pos;
+            return *this;
+        }
+
+        constexpr const_iterator operator++(int) noexcept {
+            const_iterator tmp = *this;
+            ++(*this);
+            return tmp;
+        }
+
+
+        constexpr const_iterator& operator--() noexcept {
+            --pos;
+            return *this;
+        }
+
+        constexpr const_iterator operator--(int) noexcept {
+            const_iterator tmp = *this;
+            --(*this);
+            return tmp;
+        }
+
+        constexpr const_iterator& operator+=(const ptrdiff_t n) noexcept {
+            pos += n;
+            return *this;
+        }
+
+        constexpr const_iterator& operator-=(ptrdiff_t n) noexcept {
+            pos -= n;
+            return *this;
+        }
+
+        constexpr const_iterator operator+(ptrdiff_t n) const noexcept {
+            return iterator(parent, pos + n);
+        }
+
+        constexpr const_iterator operator-(ptrdiff_t n) const noexcept {
+            return iterator(parent, pos - n);
+        }
+
+        constexpr ptrdiff_t operator-(const const_iterator& other) const noexcept {
+            return static_cast<ptrdiff_t>(pos) - static_cast<ptrdiff_t>(other.pos);
+        }
+
+
+        constexpr const T& operator[](ptrdiff_t n) const {
+            return *(*this + n);
+        }
+
+
+        constexpr bool operator==(const iterator& o) const noexcept {
+            return parent == o.parent && pos == o.pos;
+        }
+
+        constexpr std::strong_ordering operator<=>(const iterator& o) const noexcept {
+            return parent->internal_at_ptr(0) + pos <=> o.parent->internal_at_ptr(0) + o.pos;
+        }
+
+        private:
+        const vector_list* parent;
+        size_t pos;
+    };
+
+    private:
+    struct data_block {
+        private:
+        T* m_start;
+        T* m_data_end;
+        T* m_block_end;
+
+        public:
+        explicit data_block() = delete;
+
+        explicit data_block(size_t size) {
+            m_start = static_cast<T*>(malloc(size * sizeof(T)));
+            m_data_end = m_start;
+            m_block_end = m_start + size;
+        }
+
+        ~data_block() {
+            std::free(m_start);
         }
 
         [[nodiscard]] size_t size() const {
-            return this->m_size;
+            return m_data_end - m_start;
         }
 
         [[nodiscard]] size_t capacity() const {
-            return data.capacity();
+            return m_block_end - m_start;
+        }
+
+        constexpr T* ptr_at(size_t pos) noexcept {
+            return m_start + pos;
         }
     };
 
-    std::vector<block> vectorList;
+    //TODO: iterators
+    std::vector<data_block> vectorList;
     std::vector<size_t> blockOffsets;
     size_t m_size = 0;
     size_t m_capacity = 0;
 
+    constexpr T* internal_at_ptr(size_t pos) noexcept {
+        assert(pos < m_size);
+        ptrdiff_t blockIdx = std::lower_bound(blockOffsets.begin(), blockOffsets.end(), pos) - blockOffsets.begin();
+        return vectorList[blockIdx].ptr_at(pos);
+    }
+
+    constexpr const T* internal_at_ptr(size_t pos) const noexcept {
+        assert(pos < m_size);
+        ptrdiff_t blockIdx = std::lower_bound(blockOffsets.begin(), blockOffsets.end(), pos) - blockOffsets.begin();
+        return vectorList[blockIdx].ptr_at(pos);
+    }
+
     public:
-
-    //TODO: All the types
-
     //=============================================================
     //    Member functions
     //=============================================================
