@@ -13,17 +13,20 @@ Created by FlyingLeek in 15/10/2025.
 #include <ranges>
 #include <vector>
 
-template <class T>
+template <class T, class Allocator = std::allocator<T>>
 class vector_list {
 
     public:
     class iterator {
+        vector_list* parent;
+        size_t pos;
+
         public:
         constexpr iterator() noexcept : parent(nullptr), pos(0) {
 
         }
 
-        constexpr iterator(vector_list* parent, size_t pos) noexcept : parent(parent), pos(pos) {
+        constexpr iterator(vector_list* parent, const size_t pos) noexcept : parent(parent), pos(pos) {
 
         }
 
@@ -95,13 +98,11 @@ class vector_list {
         constexpr std::strong_ordering operator<=>(const iterator& o) const noexcept {
             return parent->internal_at_ptr(0) + pos <=> o.parent->internal_at_ptr(0) + o.pos;
         }
-
-        private:
-        vector_list* parent;
-        size_t pos;
     };
 
     class const_iterator {
+        const vector_list* parent;
+        size_t pos;
 
         public:
         constexpr const_iterator() noexcept : parent(nullptr), pos(0) {
@@ -184,10 +185,6 @@ class vector_list {
         constexpr std::strong_ordering operator<=>(const iterator& o) const noexcept {
             return parent->internal_at_ptr(0) + pos <=> o.parent->internal_at_ptr(0) + o.pos;
         }
-
-        private:
-        const vector_list* parent;
-        size_t pos;
     };
 
     private:
@@ -196,18 +193,20 @@ class vector_list {
         T* m_start;
         T* m_data_end;
         T* m_block_end;
+        Allocator m_alloc;
 
         public:
         explicit data_block() = delete;
 
-        explicit data_block(size_t size) {
-            m_start = static_cast<T*>(malloc(size * sizeof(T)));
+        explicit data_block(size_t size, Allocator& alloc = std::allocator<T>()) {
+            m_alloc = alloc;
+            m_start = m_alloc.allocate(size);
             m_data_end = m_start;
             m_block_end = m_start + size;
         }
 
         ~data_block() {
-            std::free(m_start);
+            m_alloc.deallocate(m_start);
         }
 
         [[nodiscard]] size_t size() const {
@@ -224,21 +223,24 @@ class vector_list {
     };
 
     //TODO: iterators
-    std::vector<data_block> vectorList;
-    std::vector<size_t> blockOffsets;
+    std::vector<data_block> m_vectorList;
+    std::vector<size_t> m_blockOffsets;
+    //TODO: May not be necessary
     size_t m_size = 0;
     size_t m_capacity = 0;
 
+    Allocator m_alloc;
+
     constexpr T* internal_at_ptr(size_t pos) noexcept {
         assert(pos < m_size);
-        ptrdiff_t blockIdx = std::lower_bound(blockOffsets.begin(), blockOffsets.end(), pos) - blockOffsets.begin();
-        return vectorList[blockIdx].ptr_at(pos);
+        ptrdiff_t blockIdx = std::lower_bound(m_blockOffsets.begin(), m_blockOffsets.end(), pos) - m_blockOffsets.begin();
+        return m_vectorList[blockIdx].ptr_at(pos);
     }
 
     constexpr const T* internal_at_ptr(size_t pos) const noexcept {
         assert(pos < m_size);
-        ptrdiff_t blockIdx = std::lower_bound(blockOffsets.begin(), blockOffsets.end(), pos) - blockOffsets.begin();
-        return vectorList[blockIdx].ptr_at(pos);
+        ptrdiff_t blockIdx = std::lower_bound(m_blockOffsets.begin(), m_blockOffsets.end(), pos) - m_blockOffsets.begin();
+        return m_vectorList[blockIdx].ptr_at(pos);
     }
 
     public:
@@ -247,8 +249,8 @@ class vector_list {
     //=============================================================
 
     vector_list() {
-        this->vectorList.emplace_back(4);
-        this->blockOffsets.push_back(0);
+        this->m_vectorList.emplace_back(4);
+        this->m_blockOffsets.push_back(0);
         this->m_size       = 0;
         this->m_capacity   = 4;
     }
@@ -258,22 +260,22 @@ class vector_list {
     vector_list(vector_list &&vecL) = default;
 
     explicit vector_list(size_t size) {
-        this->vectorList.emplace_back(size);
-        this->blockOffsets.push_back(0);
+        this->m_vectorList.emplace_back(size);
+        this->m_blockOffsets.push_back(0);
         this->m_size       = size;
         this->m_capacity   = size;
     }
 
     vector_list(size_t size, const T& value) {
-        this->vectorList.emplace_back(size, value);
-        this->blockOffsets.push_back(0);
+        this->m_vectorList.emplace_back(size, value);
+        this->m_blockOffsets.push_back(0);
         this->m_size       = size;
         this->m_capacity   = size;
     }
 
     vector_list(size_t size, size_t capacity) {
-        this->vectorList.emplace_back(capacity);
-        this->blockOffsets.push_back(0);
+        this->m_vectorList.emplace_back(capacity);
+        this->m_blockOffsets.push_back(0);
         this->m_size = size;
         this->m_capacity = capacity;
     }
@@ -399,8 +401,6 @@ class vector_list {
         //TODO:
     }
 
-    //TODO: Insert and iterator stuff
-    //TODO: insert_range and interator stuff
     //TODO: emplace
     //TODO: erase
 
