@@ -222,10 +222,9 @@ class vector_list {
         }
     };
 
-    //TODO: iterators
     std::vector<data_block> m_vectorList;
     std::vector<size_t> m_blockOffsets;
-    //TODO: May not be necessary
+
     size_t m_size = 0;
     size_t m_capacity = 0;
 
@@ -311,40 +310,52 @@ class vector_list {
         //TODO:
     }
 
+    Allocator get_allocator() const {
+        return m_alloc;
+    }
+
     //=============================================================
     //    Element Access
     //=============================================================
 
     T& at(size_t pos) {
-        //TODO:
+        if (pos >= this->m_size) {
+            throw std::out_of_range("vector_list::at  access, which is " + std::to_string(pos) +
+                                        " is greater or equal to the size, which is " + std::to_string(this->m_size));
+        }
+        return *internal_at_ptr(pos);
     }
 
     const T& at(size_t pos) const {
-        //TODO:
+        if (pos >= this->m_size) {
+            throw std::out_of_range("vector_list::at  access, which is " + std::to_string(pos) +
+                                        " is greater or equal to the size, which is " + std::to_string(this->m_size));
+        }
+        return *internal_at_ptr(pos);
     }
 
     T& operator[](size_t pos) {
-        //TODO:
+        return *internal_at_ptr(pos);
     }
 
     const T& operator[](size_t pos) const {
-        //TODO:
+        return *internal_at_ptr(pos);
     }
 
     T& front() {
-        //TODO:
+        return *internal_at_ptr(0);
     }
 
     const T& front() const {
-        //TODO:
+        return *internal_at_ptr(0);
     }
 
     T& back() {
-        //TODO:
+        return *internal_at_ptr(this->m_size - 1);
     }
 
     const T& back() const {
-        //TODO:
+        return *internal_at_ptr(this->m_size - 1);
     }
 
     T* data() {
@@ -365,12 +376,12 @@ class vector_list {
     //    Capacity
     //=============================================================
 
-    bool empty() const {
-        //TODO:
+    [[nodiscard]] bool empty() const {
+        return this->m_size == 0;
     }
 
-    size_t size() const {
-        //TODO:
+    [[nodiscard]] size_t size() const {
+        return this->m_size;
     }
 
     size_t max_size() const {
@@ -381,8 +392,8 @@ class vector_list {
         //TODO:
     }
 
-    constexpr size_t capacity() const noexcept {
-        //TODO:
+    [[nodiscard]] constexpr size_t capacity() const noexcept {
+        return this->m_capacity;
     }
 
     constexpr void shrink_to_fit() {
