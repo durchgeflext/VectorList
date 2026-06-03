@@ -206,7 +206,7 @@ class vector_list {
         }
 
         ~data_block() {
-            m_alloc.deallocate(m_start);
+            m_alloc.deallocate(m_start, m_block_end - m_start);
         }
 
         [[nodiscard]] size_t size() const {
@@ -230,19 +230,37 @@ class vector_list {
 
     Allocator m_alloc;
 
-    constexpr T* internal_at_ptr(size_t pos) noexcept {
+    //TODO: Check if those functions compute the correct blockIndex
+    constexpr T* internal_at_ptr(const size_t pos) noexcept {
         assert(pos < m_size);
         ptrdiff_t blockIdx = std::lower_bound(m_blockOffsets.begin(), m_blockOffsets.end(), pos) - m_blockOffsets.begin();
-        return m_vectorList[blockIdx].ptr_at(pos);
+        return m_vectorList[blockIdx].ptr_at(pos - m_blockOffsets[blockIdx]);
     }
 
-    constexpr const T* internal_at_ptr(size_t pos) const noexcept {
+    constexpr const T* internal_at_ptr(const size_t pos) const noexcept {
         assert(pos < m_size);
         ptrdiff_t blockIdx = std::lower_bound(m_blockOffsets.begin(), m_blockOffsets.end(), pos) - m_blockOffsets.begin();
-        return m_vectorList[blockIdx].ptr_at(pos);
+        return m_vectorList[blockIdx].ptr_at(pos - m_blockOffsets[blockIdx]);
+    }
+
+    constexpr void new_block() {
+        this->m_blockOffsets.push_back(m_capacity);
+        this->m_vectorList.emplace_back(m_capacity);
+        this->m_capacity *= 2;
     }
 
     public:
+    //=============================================================
+    //    Type Definitions
+    //=============================================================
+    using value_type = T;
+    using allocator_type = Allocator;
+    using size_type = size_t;
+    using difference_type = std::ptrdiff_t;
+    using reference = value_type&;
+    using const_reference = const value_type&;
+
+
     //=============================================================
     //    Member functions
     //=============================================================
@@ -280,19 +298,48 @@ class vector_list {
     }
 
     vector_list& operator = (const vector_list &other) {
-        //TODO:
+        //TODO: Implement allocator behaviour
+        this->m_vectorList = other.m_vectorList;
+        this->m_blockOffsets = other.m_blockOffsets;
+        this->m_capacity = other.m_capacity;
+        this->m_size = other.m_size;
+        return *this;
     }
 
-    vector_list& operator = (const vector_list &&other)  noexcept {
-        //TODO:
+    vector_list& operator = (vector_list &&other)  noexcept {
+        //TODO: Implement allocator behaviour
+        this->m_vectorList = std::move(other.m_vectorList);
+        this->m_blockOffsets = std::move(other.m_blockOffsets);
+        this->m_capacity = other.m_capacity;
+        this->m_size = other.m_size;
+        return *this;
     }
 
     vector_list& operator = (std::initializer_list<T> ilist) {
-        //TODO:
+        //TODO: What happens to the allocator here?
+        this->m_blockOffsets.clear();
+        this->m_blockOffsets.push_back(0);
+
+        this->m_vectorList.clear();
+        this->m_vectorList.emplace_back(ilist.size());
+
+        this->m_size = ilist.size();
+        this->m_capacity = ilist.size();
+
+        for (size_t i = 0; i < ilist.size(); i++) {
+            this->internal_at_ptr(i) = ilist[i];
+        }
+
+        return *this;
     }
 
     void assign(size_t count, const T& value) {
-        //TODO:
+        while (m_size + count > m_capacity) {
+            new_block();
+        }
+        for (size_t i = 0; i < count; i++) {
+            internal_at_ptr(m_size++) = value;
+        }
     }
 
     template <class InputIt>
