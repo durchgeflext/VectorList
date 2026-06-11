@@ -220,6 +220,18 @@ class vector_list {
         constexpr T* ptr_at(size_t pos) noexcept {
             return m_start + pos;
         }
+
+        constexpr void refit() noexcept {
+            m_alloc.deallocate(m_data_end, m_block_end - m_data_end);
+            m_block_end = m_data_end;
+        }
+
+        constexpr void swap(data_block& other) noexcept {
+            std::swap(m_start, other.m_start);
+            std::swap(m_data_end, other.m_data_end);
+            std::swap(m_block_end,other.m_block_end);
+            std::swap(m_alloc, other.m_alloc);
+        }
     };
 
     std::vector<data_block> m_vectorList;
@@ -344,11 +356,26 @@ class vector_list {
 
     template <class InputIt>
     void assign(InputIt begin, InputIt end) {
-        //TODO:
+        //TODO: Check for correctness
+        const auto count = static_cast<size_t>(end - begin);
+        while (m_size + count > m_capacity) {
+            new_block();
+        }
+        while (begin < end) {
+            internal_at_ptr(m_size++) = *begin;
+            std::advance(begin, 1);
+        }
     }
 
     void assign(std::initializer_list<T> ilist) {
         //TODO:
+        const size_t count = ilist.size();
+        while (m_size + count > m_capacity) {
+            new_block();
+        }
+        for (size_t i = 0; i < count; i++) {
+            internal_at_ptr(m_size++) = ilist[i];
+        }
     }
 
     template <std::ranges::input_range R>
@@ -406,11 +433,15 @@ class vector_list {
     }
 
     T* data() {
-        //TODO:
+        // Returns a pointer to the first data_block (if not flattened before, this may produce UB)
+#warning "Do not use before calling vector_list::flatten"
+        return m_vectorList[0].ptr_at(0);
     }
 
     const T* data() const {
-        //TODO:
+        // Returns a pointer to the first data_block (if not flattened before, this may produce UB)
+#warning "Do not use before calling vector_list::flatten"
+        return m_vectorList[0].ptr_at(0);
     }
 
     //=============================================================
@@ -431,12 +462,14 @@ class vector_list {
         return this->m_size;
     }
 
-    size_t max_size() const {
-        //TODO:
+    [[nodiscard]] constexpr size_t max_size() const {
+        return std::numeric_limits<difference_type>::max() / sizeof(T);
     }
 
     void reserve(size_t new_cap) {
-        //TODO:
+        while (new_cap > m_capacity) {
+            new_block();
+        }
     }
 
     [[nodiscard]] constexpr size_t capacity() const noexcept {
@@ -444,11 +477,23 @@ class vector_list {
     }
 
     constexpr void shrink_to_fit() {
-        //TODO:
+        if (m_size == m_capacity) return;
+
+        while (m_vectorList.back().size() == 0) {
+            m_vectorList.erase(m_vectorList.end());
+        }
+
+        m_vectorList.back().refit();
+        m_capacity = m_size;
     }
 
     void flatten() {
-        //TODO:
+        data_block flat(m_capacity);
+        for (size_t i = 0; i < m_size; i++) {
+            *flat.ptr_at(i) = *internal_at_ptr(i);
+        }
+        m_vectorList[0].swap(flat);
+        m_vectorList.resize(1);
     }
 
     //=============================================================
