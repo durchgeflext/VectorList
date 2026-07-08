@@ -10,6 +10,7 @@ Created by FlyingLeek in 15/10/2025.
 #pragma once
 
 #include <cassert>
+#include <memory>
 #include <ranges>
 #include <vector>
 
@@ -501,18 +502,23 @@ class vector_list {
     //=============================================================
 
     constexpr void clear() noexcept {
-        //TODO:
+        for (size_t i = 0; i < m_size; i++) {
+            std::allocator_traits<allocator_type>::destroy(m_alloc, internal_at_ptr(i));
+        }
+        m_size = 0;
     }
-
+    //TODO: insert
     //TODO: emplace
     //TODO: erase
 
     constexpr void push_back(const T& value) noexcept {
-        //TODO:
+        if (m_size == m_capacity) new_block();
+        *internal_at_ptr(++m_size - 1) = value;
     }
 
     constexpr void push_back(T&& value) noexcept {
-        //TODO:
+        if (m_size == m_capacity) new_block();
+        *internal_at_ptr(++m_size - 1) = value;
     }
 
     template<class... Args>
@@ -527,7 +533,8 @@ class vector_list {
     }
 
     constexpr void pop_back() {
-        //TODO:
+        std::allocator_traits<allocator_type>::destroy(m_alloc, internal_at_ptr(m_size - 1));
+        m_size--;
     }
 
     constexpr void resize(size_t count) {
@@ -540,6 +547,15 @@ class vector_list {
 
     constexpr void swap(vector_list& other) noexcept {
         //TODO:
+        std::swap(this->m_vectorList, other.m_vectorList);
+        std::swap(this->m_blockOffsets, other.m_blockOffsets);
+
+        std::swap(this->m_size, other.m_size);
+        std::swap(this->m_capacity, other.m_capacity);
+
+        if (std::allocator_traits<allocator_type>::propagate_on_container_swap::value) {
+            std::swap(this->m_alloc, other.m_alloc);
+        }
     }
 };
 
@@ -556,7 +572,7 @@ constexpr bool operator<=>(const vector_list<T>& lhs, const vector_list<T>& rhs)
 namespace std {
     template<class T, class Alloc>
     constexpr void swap(vector_list<T>& lhs, vector_list<T>& rhs) noexcept {
-        //TODO:
+        lhs.swap(rhs);
     }
 
     template<class T, class Alloc, class U>
