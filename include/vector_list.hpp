@@ -503,9 +503,57 @@ class vector_list {
         }
         m_size = 0;
     }
-    //TODO: insert
-    //TODO: emplace
-    //TODO: erase
+
+    constexpr iterator insert(const_iterator pos, const_reference value) {
+        //TODO: implement
+        //std::vector does reallocation.
+        //Would it make sense to just allocate a data block inbetween pos-1 and pos?
+    }
+
+    constexpr iterator insert(const_iterator pos, value_type&& value) {
+        //TODO: implement
+    }
+
+    constexpr iterator insert(const_iterator pos, size_type count, const_reference value ) {
+        //TODO: implement
+    }
+
+    template< class InputIt >
+    constexpr iterator insert(const_iterator pos, InputIt first, InputIt last ) {
+        //TODO: implement
+    }
+
+    constexpr iterator insert( const_iterator pos, std::initializer_list<T> ilist) {
+        //TODO: implement
+    }
+
+    template <std::ranges::input_range R>
+        requires std::convertible_to<std::ranges::range_reference_t<R>, value_type>
+    constexpr iterator insert_range( const_iterator pos, R&& rg ) {
+        //TODO: implement
+    }
+
+
+    template< class... Args >
+    constexpr iterator emplace( const_iterator pos, Args&&... args) {
+        //TODO: implement
+    }
+
+    iterator erase(iterator pos) {
+        //TODO: implement
+    }
+
+    constexpr iterator erase(const_iterator pos) {
+        //TODO: implement
+    }
+
+    iterator erase(iterator first, iterator last) {
+        //TODO: implement
+    }
+
+    constexpr iterator erase(const_iterator first, const_iterator last) {
+        //TODO: implement
+    }
 
     constexpr void push_back(const_reference value) noexcept {
         if (m_size == m_capacity) new_block();
@@ -534,15 +582,32 @@ class vector_list {
     }
 
     constexpr void resize(size_type count) {
-        //TODO:
+        if constexpr (count < m_size) {
+            m_size = count;
+        } else if (count > m_size) {
+            while (count + m_size > m_capacity) {
+                new_block();
+            }
+            for (size_t i = 0; i < count; i++) {
+                internal_at_ptr(m_size++) = value_type{};
+            }
+        }
     }
 
-    constexpr void resize(size_type, const_reference value) {
-        //TODO:
+    constexpr void resize(size_type count, const_reference value) {
+        if constexpr (count < m_size) {
+            m_size = count;
+        } else if (count > m_size) {
+            while (count + m_size > m_capacity) {
+                new_block();
+            }
+            for (size_t i = 0; i < count; i++) {
+                internal_at_ptr(m_size++) = value;
+            }
+        }
     }
 
     constexpr void swap(vector_list& other) noexcept {
-        //TODO:
         std::swap(this->m_vectorList, other.m_vectorList);
         std::swap(this->m_blockOffsets, other.m_blockOffsets);
 
