@@ -18,25 +18,34 @@ template <class T, class Allocator = std::allocator<T>>
 class vector_list {
 
     public:
+    //=============================================================
+    //    Type Definitions
+    //=============================================================
+    using value_type = T;
+    using allocator_type = Allocator;
+    using size_type = size_t;
+    using difference_type = std::ptrdiff_t;
+    using reference = value_type&;
+    using const_reference = const value_type&;
     class iterator {
         vector_list* parent;
-        size_t pos;
+        size_type pos;
 
         public:
         constexpr iterator() noexcept : parent(nullptr), pos(0) {
 
         }
 
-        constexpr iterator(vector_list* parent, const size_t pos) noexcept : parent(parent), pos(pos) {
+        constexpr iterator(vector_list* parent, const size_type pos) noexcept : parent(parent), pos(pos) {
 
         }
 
 
-        constexpr T& operator*() const {
+        constexpr reference operator*() const {
             return *parent->internal_at_ptr(pos);
         }
 
-        constexpr T* operator->() const {
+        constexpr value_type* operator->() const {
            return parent->internal_at_ptr(pos);
         }
 
@@ -64,30 +73,30 @@ class vector_list {
             return tmp;
         }
 
-        constexpr iterator& operator+=(const ptrdiff_t n) noexcept {
+        constexpr iterator& operator+=(const difference_type n) noexcept {
             pos += n;
             return *this;
         }
 
-        constexpr iterator& operator-=(const ptrdiff_t n) noexcept {
+        constexpr iterator& operator-=(const difference_type n) noexcept {
             pos -= n;
             return *this;
         }
 
-        constexpr iterator operator+(const ptrdiff_t n) const noexcept {
+        constexpr iterator operator+(const difference_type n) const noexcept {
             return iterator(parent, pos + n);
         }
 
-        constexpr iterator operator-(const ptrdiff_t n) const noexcept {
+        constexpr iterator operator-(const difference_type n) const noexcept {
             return iterator(parent, pos - n);
         }
 
-        constexpr ptrdiff_t operator-(const iterator& other) const noexcept {
-            return static_cast<ptrdiff_t>(pos) - static_cast<ptrdiff_t>(other.pos);
+        constexpr difference_type operator-(const iterator& other) const noexcept {
+            return static_cast<difference_type>(pos) - static_cast<difference_type>(other.pos);
         }
 
 
-        constexpr T& operator[](ptrdiff_t n) const {
+        constexpr reference operator[](difference_type n) const {
             return *(*this + n);
         }
 
@@ -103,14 +112,14 @@ class vector_list {
 
     class const_iterator {
         const vector_list* parent;
-        size_t pos;
+        size_type pos;
 
         public:
         constexpr const_iterator() noexcept : parent(nullptr), pos(0) {
 
         }
 
-        constexpr const_iterator(const vector_list* parent, const size_t pos) noexcept : parent(parent), pos(pos) {
+        constexpr const_iterator(const vector_list* parent, const size_type pos) noexcept : parent(parent), pos(pos) {
 
         }
 
@@ -119,11 +128,11 @@ class vector_list {
         }
 
 
-        constexpr const T& operator*() const {
+        constexpr const_reference operator*() const {
             return *(parent->internal_at_ptr(pos));
         }
 
-        constexpr const T* operator->() const {
+        constexpr const value_type* operator->() const {
             return parent->internal_at_ptr(pos);
         }
 
@@ -151,30 +160,30 @@ class vector_list {
             return tmp;
         }
 
-        constexpr const_iterator& operator+=(const ptrdiff_t n) noexcept {
+        constexpr const_iterator& operator+=(const difference_type n) noexcept {
             pos += n;
             return *this;
         }
 
-        constexpr const_iterator& operator-=(ptrdiff_t n) noexcept {
+        constexpr const_iterator& operator-=(difference_type n) noexcept {
             pos -= n;
             return *this;
         }
 
-        constexpr const_iterator operator+(ptrdiff_t n) const noexcept {
+        constexpr const_iterator operator+(difference_type n) const noexcept {
             return iterator(parent, pos + n);
         }
 
-        constexpr const_iterator operator-(ptrdiff_t n) const noexcept {
+        constexpr const_iterator operator-(difference_type n) const noexcept {
             return iterator(parent, pos - n);
         }
 
-        constexpr ptrdiff_t operator-(const const_iterator& other) const noexcept {
-            return static_cast<ptrdiff_t>(pos) - static_cast<ptrdiff_t>(other.pos);
+        constexpr difference_type operator-(const const_iterator& other) const noexcept {
+            return static_cast<difference_type>(pos) - static_cast<difference_type>(other.pos);
         }
 
 
-        constexpr const T& operator[](ptrdiff_t n) const {
+        constexpr const reference operator[](difference_type n) const {
             return *(*this + n);
         }
 
@@ -191,15 +200,15 @@ class vector_list {
     private:
     struct data_block {
         private:
-        T* m_start;
-        T* m_data_end;
-        T* m_block_end;
-        Allocator m_alloc;
+        value_type* m_start;
+        value_type* m_data_end;
+        value_type* m_block_end;
+        allocator_type m_alloc;
 
         public:
         explicit data_block() = delete;
 
-        explicit data_block(size_t size, Allocator& alloc = std::allocator<T>()) {
+        explicit data_block(size_type size, allocator_type& alloc = std::allocator<value_type>()) {
             m_alloc = alloc;
             m_start = m_alloc.allocate(size);
             m_data_end = m_start;
@@ -210,15 +219,15 @@ class vector_list {
             m_alloc.deallocate(m_start, m_block_end - m_start);
         }
 
-        [[nodiscard]] size_t size() const {
+        [[nodiscard]] size_type size() const {
             return m_data_end - m_start;
         }
 
-        [[nodiscard]] size_t capacity() const {
+        [[nodiscard]] size_type capacity() const {
             return m_block_end - m_start;
         }
 
-        constexpr T* ptr_at(size_t pos) noexcept {
+        constexpr value_type* ptr_at(size_type pos) noexcept {
             return m_start + pos;
         }
 
@@ -236,23 +245,23 @@ class vector_list {
     };
 
     std::vector<data_block> m_vectorList;
-    std::vector<size_t> m_blockOffsets;
+    std::vector<size_type> m_blockOffsets;
 
-    size_t m_size = 0;
-    size_t m_capacity = 0;
+    size_type m_size = 0;
+    size_type m_capacity = 0;
 
-    Allocator m_alloc;
+    allocator_type m_alloc;
 
     //TODO: Check if those functions compute the correct blockIndex
-    constexpr T* internal_at_ptr(const size_t pos) noexcept {
+    constexpr value_type* internal_at_ptr(const size_type pos) noexcept {
         assert(pos < m_size);
-        ptrdiff_t blockIdx = std::lower_bound(m_blockOffsets.begin(), m_blockOffsets.end(), pos) - m_blockOffsets.begin();
+        difference_type blockIdx = std::lower_bound(m_blockOffsets.begin(), m_blockOffsets.end(), pos) - m_blockOffsets.begin();
         return m_vectorList[blockIdx].ptr_at(pos - m_blockOffsets[blockIdx]);
     }
 
-    constexpr const T* internal_at_ptr(const size_t pos) const noexcept {
+    constexpr const value_type* internal_at_ptr(const size_type pos) const noexcept {
         assert(pos < m_size);
-        ptrdiff_t blockIdx = std::lower_bound(m_blockOffsets.begin(), m_blockOffsets.end(), pos) - m_blockOffsets.begin();
+        difference_type blockIdx = std::lower_bound(m_blockOffsets.begin(), m_blockOffsets.end(), pos) - m_blockOffsets.begin();
         return m_vectorList[blockIdx].ptr_at(pos - m_blockOffsets[blockIdx]);
     }
 
@@ -261,17 +270,6 @@ class vector_list {
         this->m_vectorList.emplace_back(m_capacity);
         this->m_capacity *= 2;
     }
-
-    public:
-    //=============================================================
-    //    Type Definitions
-    //=============================================================
-    using value_type = T;
-    using allocator_type = Allocator;
-    using size_type = size_t;
-    using difference_type = std::ptrdiff_t;
-    using reference = value_type&;
-    using const_reference = const value_type&;
 
 
     //=============================================================
@@ -289,21 +287,21 @@ class vector_list {
 
     vector_list(vector_list &&vecL) = default;
 
-    explicit vector_list(size_t size) {
+    explicit vector_list(size_type size) {
         this->m_vectorList.emplace_back(size);
         this->m_blockOffsets.push_back(0);
         this->m_size       = size;
         this->m_capacity   = size;
     }
 
-    vector_list(size_t size, const T& value) {
+    vector_list(size_type size, const_reference value) {
         this->m_vectorList.emplace_back(size, value);
         this->m_blockOffsets.push_back(0);
         this->m_size       = size;
         this->m_capacity   = size;
     }
 
-    vector_list(size_t size, size_t capacity) {
+    vector_list(size_type size, size_type capacity) {
         this->m_vectorList.emplace_back(capacity);
         this->m_blockOffsets.push_back(0);
         this->m_size = size;
@@ -328,7 +326,7 @@ class vector_list {
         return *this;
     }
 
-    vector_list& operator = (std::initializer_list<T> ilist) {
+    vector_list& operator = (std::initializer_list<value_type> ilist) {
         //TODO: What happens to the allocator here?
         this->m_blockOffsets.clear();
         this->m_blockOffsets.push_back(0);
@@ -346,7 +344,7 @@ class vector_list {
         return *this;
     }
 
-    void assign(size_t count, const T& value) {
+    void assign(size_type count, const_reference value) {
         while (m_size + count > m_capacity) {
             new_block();
         }
@@ -358,7 +356,7 @@ class vector_list {
     template <class InputIt>
     void assign(InputIt begin, InputIt end) {
         //TODO: Check for correctness
-        const auto count = static_cast<size_t>(end - begin);
+        const auto count = static_cast<size_type>(end - begin);
         while (m_size + count > m_capacity) {
             new_block();
         }
@@ -368,7 +366,7 @@ class vector_list {
         }
     }
 
-    void assign(std::initializer_list<T> ilist) {
+    void assign(std::initializer_list<value_type> ilist) {
         //TODO:
         const size_t count = ilist.size();
         while (m_size + count > m_capacity) {
@@ -380,12 +378,12 @@ class vector_list {
     }
 
     template <std::ranges::input_range R>
-        requires std::convertible_to<std::ranges::range_reference_t<R>, T>
+        requires std::convertible_to<std::ranges::range_reference_t<R>, value_type>
     constexpr void assign_range(R && r) {
         //TODO:
     }
 
-    Allocator get_allocator() const {
+    allocator_type get_allocator() const {
         return m_alloc;
     }
 
@@ -393,7 +391,7 @@ class vector_list {
     //    Element Access
     //=============================================================
 
-    T& at(size_t pos) {
+    reference at(size_type pos) {
         if (pos >= this->m_size) {
             throw std::out_of_range("vector_list::at  access, which is " + std::to_string(pos) +
                                         " is greater or equal to the size, which is " + std::to_string(this->m_size));
@@ -401,7 +399,7 @@ class vector_list {
         return *internal_at_ptr(pos);
     }
 
-    const T& at(size_t pos) const {
+    const_reference at(size_type pos) const {
         if (pos >= this->m_size) {
             throw std::out_of_range("vector_list::at  access, which is " + std::to_string(pos) +
                                         " is greater or equal to the size, which is " + std::to_string(this->m_size));
@@ -409,37 +407,37 @@ class vector_list {
         return *internal_at_ptr(pos);
     }
 
-    T& operator[](size_t pos) {
+    reference operator[](size_type pos) {
         return *internal_at_ptr(pos);
     }
 
-    const T& operator[](size_t pos) const {
+    const_reference operator[](size_type pos) const {
         return *internal_at_ptr(pos);
     }
 
-    T& front() {
+    reference front() {
         return *internal_at_ptr(0);
     }
 
-    const T& front() const {
+    const_reference front() const {
         return *internal_at_ptr(0);
     }
 
-    T& back() {
+    reference back() {
         return *internal_at_ptr(this->m_size - 1);
     }
 
-    const T& back() const {
+    const_reference back() const {
         return *internal_at_ptr(this->m_size - 1);
     }
 
-    T* data() {
+    value_type* data() {
         // Returns a pointer to the first data_block (if not flattened before, this may produce UB)
 #warning "Do not use before calling vector_list::flatten"
         return m_vectorList[0].ptr_at(0);
     }
 
-    const T* data() const {
+    const value_type* data() const {
         // Returns a pointer to the first data_block (if not flattened before, this may produce UB)
 #warning "Do not use before calling vector_list::flatten"
         return m_vectorList[0].ptr_at(0);
@@ -459,21 +457,21 @@ class vector_list {
         return this->m_size == 0;
     }
 
-    [[nodiscard]] size_t size() const {
+    [[nodiscard]] size_type size() const {
         return this->m_size;
     }
 
-    [[nodiscard]] constexpr size_t max_size() const {
-        return std::numeric_limits<difference_type>::max() / sizeof(T);
+    [[nodiscard]] constexpr size_type max_size() const {
+        return std::numeric_limits<difference_type>::max() / sizeof(value_type);
     }
 
-    void reserve(size_t new_cap) {
+    void reserve(size_type new_cap) {
         while (new_cap > m_capacity) {
             new_block();
         }
     }
 
-    [[nodiscard]] constexpr size_t capacity() const noexcept {
+    [[nodiscard]] constexpr size_type capacity() const noexcept {
         return this->m_capacity;
     }
 
@@ -511,23 +509,23 @@ class vector_list {
     //TODO: emplace
     //TODO: erase
 
-    constexpr void push_back(const T& value) noexcept {
+    constexpr void push_back(const_reference value) noexcept {
         if (m_size == m_capacity) new_block();
         *internal_at_ptr(++m_size - 1) = value;
     }
 
-    constexpr void push_back(T&& value) noexcept {
+    constexpr void push_back(reference& value) noexcept {
         if (m_size == m_capacity) new_block();
         *internal_at_ptr(++m_size - 1) = value;
     }
 
     template<class... Args>
-    constexpr T& emplace_back(Args&&... args) {
+    constexpr reference emplace_back(Args&&... args) {
         //TODO:
     }
 
     template<std::ranges::input_range R>
-        requires std::convertible_to<std::ranges::range_reference_t<R>, T>
+        requires std::convertible_to<std::ranges::range_reference_t<R>, value_type>
     constexpr void append_range(R&& rg) {
         //TODO:
     }
@@ -537,11 +535,11 @@ class vector_list {
         m_size--;
     }
 
-    constexpr void resize(size_t count) {
+    constexpr void resize(size_type count) {
         //TODO:
     }
 
-    constexpr void resize(size_t, const T& value) {
+    constexpr void resize(size_type, const_reference value) {
         //TODO:
     }
 
