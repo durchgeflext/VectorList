@@ -27,6 +27,7 @@ class vector_list {
     using difference_type = std::ptrdiff_t;
     using reference = value_type&;
     using const_reference = const value_type&;
+
     class iterator {
         vector_list* parent;
         size_type pos;
@@ -183,7 +184,7 @@ class vector_list {
         }
 
 
-        constexpr const reference operator[](difference_type n) const {
+        constexpr const_reference operator[](difference_type n) const {
             return *(*this + n);
         }
 
@@ -345,42 +346,39 @@ class vector_list {
     }
 
     void assign(size_type count, const_reference value) {
-        while (m_size + count > m_capacity) {
-            new_block();
-        }
+        resize(count);
         for (size_t i = 0; i < count; i++) {
-            internal_at_ptr(m_size++) = value;
+            internal_at_ptr(i) = value;
         }
     }
 
     template <class InputIt>
     void assign(InputIt begin, InputIt end) {
-        //TODO: Check for correctness
         const auto count = static_cast<size_type>(end - begin);
-        while (m_size + count > m_capacity) {
-            new_block();
-        }
-        while (begin < end) {
-            internal_at_ptr(m_size++) = *begin;
+        resize(count);
+        for (size_t i = 0; i < count; i++) {
+            internal_at_ptr(i) = *begin;
             std::advance(begin, 1);
         }
     }
 
     void assign(std::initializer_list<value_type> ilist) {
-        //TODO:
         const size_t count = ilist.size();
-        while (m_size + count > m_capacity) {
-            new_block();
-        }
         for (size_t i = 0; i < count; i++) {
-            internal_at_ptr(m_size++) = ilist[i];
+            internal_at_ptr(i) = ilist[i];
         }
     }
 
     template <std::ranges::input_range R>
         requires std::convertible_to<std::ranges::range_reference_t<R>, value_type>
-    constexpr void assign_range(R && r) {
-        //TODO:
+    constexpr void assign_range(R && rg) {
+        auto& beginIt = std::ranges::begin(rg);
+        auto& endIt = std::ranges::end(rg);
+        const auto count = static_cast<size_type>(endIt - beginIt);
+        for (size_t i = 0; i < count; i++) {
+            internal_at_ptr(i) = *beginIt;
+            std::advance(beginIt, 1);
+        }
     }
 
     allocator_type get_allocator() const {
