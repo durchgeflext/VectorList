@@ -16,6 +16,7 @@ Created by FlyingLeek in 15/10/2025.
 
 template <class T, class Allocator = std::allocator<T>>
 class vector_list {
+    //TODO: Implement iterator invalidation
 
     public:
     //=============================================================
@@ -27,6 +28,9 @@ class vector_list {
     using difference_type = std::ptrdiff_t;
     using reference = value_type&;
     using const_reference = const value_type&;
+    using pointer = std::allocator_traits<Allocator>::pointer;
+    using const_pointer = std::allocator_traits<Allocator>::const_pointer;
+
 
     class iterator {
         vector_list* parent;
@@ -197,6 +201,14 @@ class vector_list {
             return parent->internal_at_ptr(0) + pos <=> o.parent->internal_at_ptr(0) + o.pos;
         }
     };
+
+    //=============================================================
+    //    Type Definitions for iterators
+    //=============================================================
+    using iterator = iterator;
+    using const_iterator = const_iterator;
+    using reverse_iterator = std::reverse_iterator<iterator>;
+    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
     private:
     struct data_block {
@@ -445,7 +457,55 @@ class vector_list {
     //    Iterators
     //=============================================================
 
-    //TODO: Iterators
+    constexpr iterator begin() {
+        return iterator();
+    }
+
+    constexpr const_iterator begin() const {
+        return const_iterator();
+    }
+
+    constexpr const_iterator cbegin() const noexcept {
+        //TODO: What exactly does noexcept want me to do
+        return const_iterator();
+    }
+
+    constexpr iterator end() noexcept {
+        return iterator(m_size);
+    }
+
+    constexpr const_iterator end() const noexcept {
+        return const_iterator(m_size);
+    }
+
+    constexpr const_iterator cend() const noexcept {
+        //TODO: What exactly does noexcept want me to do
+        return const_iterator(m_size);
+    }
+
+    constexpr reverse_iterator rbegin() {
+        //TODO:
+    }
+
+    constexpr const_reverse_iterator rbegin() const {
+        //TODO:
+    }
+
+    constexpr const_reverse_iterator crbegin() const noexcept {
+        //TODO:
+    }
+
+    constexpr reverse_iterator rend() {
+        //TODO:
+    }
+
+    constexpr const_reverse_iterator rend() const {
+        //TODO:
+    }
+
+    constexpr const_reverse_iterator crend() const noexcept {
+        //TODO:
+    }
 
     //=============================================================
     //    Capacity
@@ -620,14 +680,19 @@ class vector_list {
     }
 };
 
-template<class T>
+template<class T, class Allocator = std::allocator<T>>
 constexpr bool operator==(const vector_list<T>& lhs, const vector_list<T>& rhs) {
-    //TODO:
+    if (lhs.size() != rhs.size()) return false;
+    for (size_t i = 0; i < lhs.size(); i++) {
+        if (lhs[i] != rhs[i]) return false;
+    }
+    return true;
 }
 
 template<class T>
-constexpr bool operator<=>(const vector_list<T>& lhs, const vector_list<T>& rhs) {
-    //TODO:
+constexpr auto
+    operator<=>(const vector_list<T>& lhs, const vector_list<T>& rhs) {
+    return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
 }
 
 namespace std {
