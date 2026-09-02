@@ -17,6 +17,7 @@ Created by FlyingLeek in 15/10/2025.
 template <class T, class Allocator = std::allocator<T>>
 class vector_list {
     //TODO: Implement iterator invalidation
+    //TODO: Implement all the concept/template requirements
 
     public:
     //=============================================================
@@ -443,13 +444,11 @@ class vector_list {
 
     value_type* data() {
         // Returns a pointer to the first data_block (if not flattened before, this may produce UB)
-#warning "Do not use before calling vector_list::flatten"
         return m_vectorList[0].ptr_at(0);
     }
 
     const value_type* data() const {
         // Returns a pointer to the first data_block (if not flattened before, this may produce UB)
-#warning "Do not use before calling vector_list::flatten"
         return m_vectorList[0].ptr_at(0);
     }
 
@@ -475,6 +474,7 @@ class vector_list {
     }
 
     constexpr const_iterator end() const noexcept {
+        //TODO: What exactly does noexcept want me to do
         return const_iterator(m_size);
     }
 
@@ -484,27 +484,29 @@ class vector_list {
     }
 
     constexpr reverse_iterator rbegin() {
-        //TODO:
+        return reverse_iterator();
     }
 
     constexpr const_reverse_iterator rbegin() const {
-        //TODO:
+        return reverse_iterator();
     }
 
     constexpr const_reverse_iterator crbegin() const noexcept {
-        //TODO:
+        //TODO: What exactly does noexcept want me to do
+        return reverse_iterator();
     }
 
     constexpr reverse_iterator rend() {
-        //TODO:
+        return reverse_iterator(m_size);
     }
 
     constexpr const_reverse_iterator rend() const {
-        //TODO:
+        return reverse_iterator(m_size);
     }
 
     constexpr const_reverse_iterator crend() const noexcept {
-        //TODO:
+        // TODO: What exactly does noexcept want me to do?
+        return reverse_iterator(m_size);
     }
 
     //=============================================================
@@ -565,17 +567,30 @@ class vector_list {
     }
 
     constexpr iterator insert(const_iterator pos, const_reference value) {
-        //TODO: implement
-        //std::vector does reallocation.
-        //Would it make sense to just allocate a data block inbetween pos-1 and pos?
+        // pos > end() is UB
+
+        iterator it = end();
+        this->push_back(value);
+        while (it-- > pos) {
+            std::swap(*it, *(it + 1));
+        }
+        return it;
     }
 
     constexpr iterator insert(const_iterator pos, value_type&& value) {
-        //TODO: implement
+        // pos > end() is UB
+
+        iterator it = end();
+        this->push_back(value);
+        while (it-- > pos) {
+            std::swap(*it, *(it + 1));
+        }
+        return it;
     }
 
     constexpr iterator insert(const_iterator pos, size_type count, const_reference value ) {
         //TODO: implement
+        //Cut off block containing pos, enter count values and copy remaining elements?
     }
 
     template< class InputIt >
@@ -600,11 +615,23 @@ class vector_list {
     }
 
     iterator erase(iterator pos) {
-        //TODO: implement
+        while (pos < end()) {
+            std::swap(*pos, *(pos + 1));
+            ++pos;
+        }
+        ~(*pos)();
+        m_size--;
+        return pos - 1;
     }
 
     constexpr iterator erase(const_iterator pos) {
-        //TODO: implement
+        while (pos < end()) {
+            std::swap(*pos, *(pos + 1));
+            ++pos;
+        }
+        ~(*pos)();
+        m_size--;
+        return pos - 1;
     }
 
     iterator erase(iterator first, iterator last) {
@@ -698,12 +725,22 @@ constexpr auto
 namespace std {
     template<class T, class Alloc>
     constexpr void swap(vector_list<T>& lhs, vector_list<T>& rhs) noexcept {
+        //TODO: What happens to the noexcept?
         lhs.swap(rhs);
     }
 
+    //TODO: Is this what needs to be implemented here?
     template<class T, class Alloc, class U>
     constexpr size_t erase(vector_list<T>& vec, const T& value) {
-        //TODO:
+        size_t i = 0;
+        while (i < vec.size()) {
+            if (vec[i] == value) {
+                vec.erase(i);
+            } else {
+                i++;
+            }
+        }
+        return vec.size();
     }
 
     template<class T, class Alloc, class Pred>
