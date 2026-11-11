@@ -16,7 +16,7 @@ Created by FlyingLeek in 15/10/2025.
 
 template <class T, class Allocator = std::allocator<T>>
 class vector_list {
-    //TODO: Implement iterator invalidation
+    //TODO: Implement iterator invalidation?
     //TODO: Implement all the concept/template requirements
 
     public:
@@ -267,15 +267,18 @@ class vector_list {
     allocator_type m_alloc;
 
     //TODO: Check if those functions compute the correct blockIndex
-    constexpr value_type* internal_at_ptr(const size_type pos) noexcept {
+    constexpr difference_type internal_block_index(const size_type pos) noexcept {
         assert(pos < m_size);
-        difference_type blockIdx = std::lower_bound(m_blockOffsets.begin(), m_blockOffsets.end(), pos) - m_blockOffsets.begin();
+        return std::lower_bound(m_blockOffsets.begin(), m_blockOffsets.end(), pos) - m_blockOffsets.begin();
+    }
+
+    constexpr value_type* internal_at_ptr(const size_type pos) noexcept {
+        difference_type blockIdx = internal_block_index(pos);
         return m_vectorList[blockIdx].ptr_at(pos - m_blockOffsets[blockIdx]);
     }
 
     constexpr const value_type* internal_at_ptr(const size_type pos) const noexcept {
-        assert(pos < m_size);
-        difference_type blockIdx = std::lower_bound(m_blockOffsets.begin(), m_blockOffsets.end(), pos) - m_blockOffsets.begin();
+        difference_type blockIdx = internal_block_index(pos);
         return m_vectorList[blockIdx].ptr_at(pos - m_blockOffsets[blockIdx]);
     }
 
@@ -567,39 +570,108 @@ class vector_list {
     }
 
     constexpr iterator insert(const_iterator pos, const_reference value) {
-        // pos > end() is UB
+        const difference_type blockIdx = internal_block_index(pos);
+        const difference_type innerPosition = pos - m_blockOffsets[blockIdx];
+        const size_type newSize = m_vectorList[blockIdx].size() + 1;
 
-        iterator it = end();
-        this->push_back(value);
-        while (it-- > pos) {
-            std::swap(*it, *(it + 1));
+        if (m_vectorList[blockIdx].capacity() < newSize) {
+            data_block newBlock(newSize);
+            std::copy(m_vectorList[blockIdx].ptr_at(0), internal_at_ptr(pos), newBlock.ptr_at(0));
+            *newBlock.ptr_at(innerPosition) = value;
+            std::copy(internal_at_ptr(pos), internal_at_ptr(m_blockOffsets[blockIdx + 1]), newBlock.ptr_at(innerPosition + 1));
+            m_vectorList[blockIdx] = newBlock;
+            return internal_at_ptr(pos);
         }
-        return it;
+
+        std::move(internal_at_ptr(pos), internal_at_ptr(m_blockOffsets[blockIdx + 1]), internal_at_ptr(pos + 1));
+        *internal_at_ptr(pos) = value;
+        return *internal_at_ptr(pos);
     }
 
     constexpr iterator insert(const_iterator pos, value_type&& value) {
-        // pos > end() is UB
+        const difference_type blockIdx = internal_block_index(pos);
+        const difference_type innerPosition = pos - m_blockOffsets[blockIdx];
+        const size_type newSize = m_vectorList[blockIdx].size() + 1;
 
-        iterator it = end();
-        this->push_back(value);
-        while (it-- > pos) {
-            std::swap(*it, *(it + 1));
+        if (m_vectorList[blockIdx].capacity() < newSize) {
+            data_block newBlock(newSize);
+            std::copy(m_vectorList[blockIdx].ptr_at(0), internal_at_ptr(pos), newBlock.ptr_at(0));
+            *newBlock.ptr_at(innerPosition) = value;
+            std::copy(internal_at_ptr(pos), internal_at_ptr(m_blockOffsets[blockIdx + 1]), newBlock.ptr_at(innerPosition + 1));
+            m_vectorList[blockIdx] = newBlock;
+            return internal_at_ptr(pos);
         }
-        return it;
+
+        std::move(internal_at_ptr(pos), internal_at_ptr(m_blockOffsets[blockIdx + 1]), internal_at_ptr(pos + 1));
+        *internal_at_ptr(pos) = value;
+        return *internal_at_ptr(pos);
     }
 
     constexpr iterator insert(const_iterator pos, size_type count, const_reference value ) {
-        //TODO: implement
-        //Cut off block containing pos, enter count values and copy remaining elements?
+        const difference_type blockIdx = internal_block_index(pos);
+        const difference_type innerStartPosition = pos - m_blockOffsets[blockIdx];
+        const size_type newSize = m_vectorList[blockIdx].size() + count;
+
+        if (m_vectorList[blockIdx].capacity() < newSize) {
+            data_block newBlock(newSize);
+            std::copy(m_vectorList[blockIdx].ptr_at(0), internal_at_ptr(pos), newBlock.ptr_at(0));
+
+            std::fill(newBlock.ptr_at(innerStartPosition), newBlock.ptr_at(innerStartPosition + count), value);
+
+            std::copy(internal_at_ptr(pos), internal_at_ptr(m_blockOffsets[blockIdx + 1]), newBlock.ptr_at(innerStartPosition + count));
+            m_vectorList[blockIdx] = newBlock;
+            return internal_at_ptr(pos);
+        }
+
+        std::move(internal_at_ptr(pos), internal_at_ptr(m_blockOffsets[blockIdx + 1]), internal_at_ptr(pos + 1));
+        std::fill(internal_at_ptr(pos), internal_at_ptr(pos + count), value);
+        return *internal_at_ptr(pos);
     }
 
     template< class InputIt >
     constexpr iterator insert(const_iterator pos, InputIt first, InputIt last ) {
-        //TODO: implement
+        const difference_type blockIdx = internal_block_index(pos);
+        const difference_type innerStartPosition = pos - m_blockOffsets[blockIdx];
+        const size_type count = last - first;
+        const size_type newSize = m_vectorList[blockIdx].size() + count;
+
+        if (m_vectorList[blockIdx].capacity() < newSize) {
+            data_block newBlock(newSize);
+            std::copy(m_vectorList[blockIdx].ptr_at(0), internal_at_ptr(pos), newBlock.ptr_at(0));
+
+            std::copy(first, last, newBlock.ptr_at(pos));
+
+            std::copy(internal_at_ptr(pos), internal_at_ptr(m_blockOffsets[blockIdx + 1]), newBlock.ptr_at(innerStartPosition + count));
+            m_vectorList[blockIdx] = newBlock;
+            return internal_at_ptr(pos);
+        }
+
+        std::move(internal_at_ptr(pos), internal_at_ptr(m_blockOffsets[blockIdx + 1]), internal_at_ptr(pos + 1));
+        std::copy(first, last, internal_at_ptr(pos));
+        return *internal_at_ptr(pos);
     }
 
     constexpr iterator insert( const_iterator pos, std::initializer_list<T> ilist) {
-        //TODO: implement
+        const difference_type blockIdx = internal_block_index(pos);
+        const difference_type innerStartPosition = pos - m_blockOffsets[blockIdx];
+        const size_type count = ilist.size();
+        const size_type newSize = m_vectorList[blockIdx].size() + count;
+
+        if (m_vectorList[blockIdx].capacity() < newSize) {
+            data_block newBlock(newSize);
+            std::copy(m_vectorList[blockIdx].ptr_at(0), internal_at_ptr(pos), newBlock.ptr_at(0));
+
+            std::copy(ilist.begin(), ilist.end(), newBlock.ptr_at(pos));
+
+            std::copy(internal_at_ptr(pos), internal_at_ptr(m_blockOffsets[blockIdx + 1]), newBlock.ptr_at(innerStartPosition + count));
+            m_vectorList[blockIdx] = newBlock;
+            return internal_at_ptr(pos);
+        }
+
+        std::move(internal_at_ptr(pos), internal_at_ptr(m_blockOffsets[blockIdx + 1]), internal_at_ptr(pos + 1));
+        std::copy(ilist.begin(), ilist.end(), internal_at_ptr(pos));
+        return *internal_at_ptr(pos);
+
     }
 
     template <std::ranges::input_range R>
